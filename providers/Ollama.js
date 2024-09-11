@@ -1,4 +1,4 @@
-import axios from 'axios';
+import ollama from 'ollama'
 
 export default class Ollama {
   chat = {
@@ -7,48 +7,23 @@ export default class Ollama {
         if (!model) throw new ErrorResponse('400 you must provide a model parameter', 400);
         if (!messages) throw new ErrorResponse("400 Missing required parameter: 'messages'", 400);
 
-        if (stream) {
-          return this.createStream({ messages, model });
-        }
-
-        const response = await axios.post('http://localhost:11434/api/chat', {
-          model,
-          stream: false,
-          messages
-        })
-
-        return {
-          choices: [response.data],
-        };
-      },
-      async *createStream({ messages, model }) {
-        const response = await axios.post('http://localhost:11434/api/chat', {
-          model,
-          stream: true,
-          messages
-        }, {
-          responseType: 'stream',
-          adapter: 'fetch',
+        const response = await ollama.chat({
+          model: model,
+          messages: messages,
+          stream: stream,
         });
 
-        const reader = response.data.getReader();
-        const decoder = new TextDecoder();
+        if (stream) {
+          return this.createStream(response);
+        }
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n').filter(Boolean);
-
-          for (const line of lines) {
-            try {
-              const update = JSON.parse(line);
-              yield update;
-            } catch (error) {
-              console.error('Error parsing update:', error);
-            }
-          }
+        return {
+          choices: [response]
+        };
+      },
+      async *createStream(response) {
+        for await (const part of response) {
+          yield part;
         }
       }
     }
