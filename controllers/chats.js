@@ -1,18 +1,23 @@
 import OpenAI from 'openai';
 import OpenAIMock from '../utils/OpenAIMock.js';
 import asyncHandler from '../utils/asyncHandler.js';
+import Ollama from '../providers/Ollama.js';
 
 export const createChat = asyncHandler(async (req, res) => {
   const {
     body: { stream, ...request },
-    headers: { mode }
+    headers: { mode, provider }
   } = req;
 
   let openai;
 
-  mode === 'production'
-    ? (openai = new OpenAI({ apiKey: process.env.OPEN_AI_APIKEY }))
-    : (openai = new OpenAIMock());
+  if (provider == 'ollama') {
+    openai = new Ollama();
+  } else {
+    mode === 'production'
+      ? (openai = new OpenAI({ apiKey: process.env.OPEN_AI_APIKEY }))
+      : (openai = new OpenAIMock());
+  }
 
   const completion = await openai.chat.completions.create({
     stream,

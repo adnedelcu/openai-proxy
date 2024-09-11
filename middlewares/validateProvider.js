@@ -1,7 +1,7 @@
 import ErrorResponse from '../utils/ErrorResponse.js';
 
 const validateProvider = (req, res, next) => {
-  const providers = ['open-ai'];
+  const providers = ['open-ai', 'ollama'];
   const {
     headers: { provider }
   } = req;

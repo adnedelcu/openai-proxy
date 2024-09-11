@@ -3,6 +3,7 @@ import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { PassThrough } from 'stream';
 import ErrorResponse from './ErrorResponse.js';
+import { randomUUID } from 'crypto';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -81,29 +82,34 @@ class ChatMock {
 
 class ImageMock {
   async generate({ ...request }) {
-    const { size, response_format, prompt, ...rest } = request;
+    const { size, response_format, prompt, n, ...rest } = request;
     let width = 1024;
     let height = 1024;
+    const count = n || 1;
     if (size) {
       const [w, h] = size.split('x');
       width = parseInt(w);
       height = parseInt(h);
     }
-    const data = [
-      {
+    const data = [];
+    for (let i = 0; i < count; i++) {
+      const entry = {
+        uuid: randomUUID(),
         revised_prompt: prompt
+      };
+      const url = `https://placedog.net/${width}/${height}?r`;
+      if (response_format === 'b64_json') {
+        const res = await fetch(`https://placedog.net/${width}/${height}?r`);
+        const arrayBuffer = await res.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const base64 = buffer.toString('base64');
+        entry.b64_json = base64;
+        data.push(entry);
+        continue;
       }
-    ];
-    const url = `https://placedog.net/${width}/${height}?r`;
-    if (response_format === 'b64_json') {
-      const res = await fetch(`https://placedog.net/${width}/${height}?r`);
-      const arrayBuffer = await res.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      const base64 = buffer.toString('base64');
-      data[0].b64_json = base64;
-      return { data };
+      entry.url = url;
+      data.push(entry);
     }
-    data[0].url = url;
     return { data };
   }
 }
